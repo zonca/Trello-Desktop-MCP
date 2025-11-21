@@ -79,7 +79,7 @@ class Logger {
     });
   }
 
-  apiCall(endpoint: string, method: string, status: number, duration: number, rateLimit?: any) {
+  apiCall(endpoint: string, method: string, status: number, duration: number, rateLimit?: { limit?: number; remaining?: number; resetTime?: number }) {
     this.debug(`API ${method} ${endpoint}`, {
       method,
       endpoint,

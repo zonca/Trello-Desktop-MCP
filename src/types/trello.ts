@@ -82,6 +82,8 @@ export interface TrelloMember {
   avatarHash: string | null;
   avatarUrl: string | null;
   initials: string;
+  memberType?: string;
+  confirmed?: boolean;
 }
 
 export interface TrelloChecklist {
@@ -110,12 +112,14 @@ export interface TrelloAttachment {
   date: string;
   bytes: number;
   isUpload: boolean;
-  previews?: {
-    id: string;
-    width: number;
-    height: number;
-    url: string;
-  }[];
+  previews?: AttachmentPreview[];
+}
+
+export interface AttachmentPreview {
+  id: string;
+  width: number;
+  height: number;
+  url: string;
 }
 
 export interface CreateCardRequest {
@@ -161,4 +165,70 @@ export interface RateLimitInfo {
 export interface TrelloApiResponse<T> {
   data: T;
   rateLimit?: RateLimitInfo | undefined;
+}
+
+export interface TrelloOrganization {
+  id: string;
+  name: string;
+  displayName: string;
+  desc: string;
+  url: string;
+  website: string | null;
+  logoHash: string | null;
+  products: number[];
+  powerUps: number[];
+}
+
+export interface TrelloUser {
+  id: string;
+  username: string;
+  fullName: string;
+  initials: string;
+  avatarHash: string | null;
+  avatarUrl: string | null;
+  email?: string;
+  bio?: string;
+  url?: string;
+  memberType?: string;
+  confirmed?: boolean;
+  boards?: TrelloBoard[];
+  organizations?: TrelloOrganization[];
+}
+
+export interface TrelloAction {
+  id: string;
+  type: string;
+  date: string;
+  data: {
+    text?: string;
+    card?: Partial<TrelloCard>;
+    board?: Partial<TrelloBoard>;
+    list?: Partial<TrelloList>;
+    listBefore?: Partial<TrelloList>;
+    listAfter?: Partial<TrelloList>;
+    old?: Record<string, unknown>;
+  };
+  memberCreator: TrelloMember;
+}
+
+export interface TrelloComment {
+  id: string;
+  type: 'commentCard';
+  date: string;
+  data: {
+    text: string;
+    card: {
+      id: string;
+      name: string;
+      shortLink: string;
+    };
+  };
+  memberCreator: TrelloMember;
+}
+
+export interface TrelloSearchResults {
+  boards?: TrelloBoard[];
+  cards?: TrelloCard[];
+  members?: TrelloMember[];
+  organizations?: TrelloOrganization[];
 }
