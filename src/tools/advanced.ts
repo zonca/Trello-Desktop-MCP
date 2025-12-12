@@ -59,6 +59,38 @@ const validateGetBoardLabels = (args: unknown) => {
   return schema.parse(args);
 };
 
+const validateCreateLabel = (args: unknown) => {
+  const schema = z.object({
+    boardId: z.string().regex(/^[a-f0-9]{24}$/, 'Invalid board ID format'),
+    name: z.string().min(1, 'Label name is required').max(16384, 'Label name too long'),
+    color: z.string().min(1, 'Color is required')
+  });
+
+  return schema.parse(args);
+};
+
+const validateUpdateLabel = (args: unknown) => {
+  const schema = z.object({
+    labelId: z.string().regex(/^[a-f0-9]{24}$/, 'Invalid label ID format'),
+    name: z.string().min(1).max(16384).optional(),
+    color: z.string().min(1).optional()
+  }).refine(data => Boolean(data.name || data.color), {
+    message: 'At least one of name or color must be provided',
+    path: ['name']
+  });
+
+  return schema.parse(args);
+};
+
+const validateAddLabelToCard = (args: unknown) => {
+  const schema = z.object({
+    cardId: z.string().regex(/^[a-f0-9]{24}$/, 'Invalid card ID format'),
+    labelId: z.string().regex(/^[a-f0-9]{24}$/, 'Invalid label ID format')
+  });
+
+  return schema.parse(args);
+};
+
 export const trelloGetBoardCardsTool: Tool = {
   name: 'trello_get_board_cards',
   description: 'Get all cards from a Trello board with optional filtering and detailed information like attachments and members.',
@@ -553,6 +585,278 @@ export async function handleTrelloGetBoardLabels(args: unknown) {
         {
           type: 'text' as const,
           text: `Error getting board labels: ${errorMessage}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
+
+export const trelloCreateLabelTool: Tool = {
+  name: 'trello_create_label',
+  description: 'Create a new label on a Trello board.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      boardId: {
+        type: 'string',
+        description: 'ID of the board where the label will be created',
+        pattern: '^[a-f0-9]{24}$'
+      },
+      name: {
+        type: 'string',
+        description: 'Name of the label',
+        minLength: 1
+      },
+      color: {
+        type: 'string',
+        description: 'Color of the label (e.g., green, yellow)'
+      }
+    },
+    required: ['boardId', 'name', 'color']
+  }
+};
+
+export async function handleTrelloCreateLabel(args: unknown) {
+  try {
+    const { credentials, params } = extractCredentials(args);
+    const { boardId, name, color } = validateCreateLabel(params);
+    const client = new TrelloClient(credentials);
+
+    const response = await client.createLabel(boardId, name, color);
+    const label = response.data;
+
+    const result = {
+      summary: `Created label "${label.name}" on board`,
+      label: {
+        id: label.id,
+        name: label.name,
+        color: label.color,
+        boardId: label.idBoard,
+        uses: label.uses
+      },
+      rateLimit: response.rateLimit
+    };
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    const errorMessage = error instanceof z.ZodError 
+      ? formatValidationError(error)
+      : error instanceof Error 
+        ? error.message 
+        : 'Unknown error occurred';
+        
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error creating label: ${errorMessage}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
+
+export const trelloUpdateLabelTool: Tool = {
+  name: 'trello_update_label',
+  description: 'Update the name or color of an existing Trello label.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      labelId: {
+        type: 'string',
+        description: 'ID of the label to update',
+        pattern: '^[a-f0-9]{24}$'
+      },
+      name: {
+        type: 'string',
+        description: 'New name for the label',
+        minLength: 1
+      },
+      color: {
+        type: 'string',
+        description: 'New color for the label'
+      }
+    },
+    required: ['labelId']
+  }
+};
+
+export async function handleTrelloUpdateLabel(args: unknown) {
+  try {
+    const { credentials, params } = extractCredentials(args);
+    const { labelId, name, color } = validateUpdateLabel(params);
+    const client = new TrelloClient(credentials);
+
+    const response = await client.updateLabel(labelId, { ...(name && { name }), ...(color && { color }) });
+    const label = response.data;
+
+    const result = {
+      summary: `Updated label ${label.id}`,
+      label: {
+        id: label.id,
+        name: label.name,
+        color: label.color,
+        boardId: label.idBoard,
+        uses: label.uses
+      },
+      rateLimit: response.rateLimit
+    };
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    const errorMessage = error instanceof z.ZodError 
+      ? formatValidationError(error)
+      : error instanceof Error 
+        ? error.message 
+        : 'Unknown error occurred';
+        
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error updating label: ${errorMessage}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
+
+export const trelloAddLabelToCardTool: Tool = {
+  name: 'trello_add_label_to_card',
+  description: 'Assign an existing label to a Trello card.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      cardId: {
+        type: 'string',
+        description: 'ID of the card to label',
+        pattern: '^[a-f0-9]{24}$'
+      },
+      labelId: {
+        type: 'string',
+        description: 'ID of the label to add',
+        pattern: '^[a-f0-9]{24}$'
+      }
+    },
+    required: ['cardId', 'labelId']
+  }
+};
+
+export async function handleTrelloAddLabelToCard(args: unknown) {
+  try {
+    const { credentials, params } = extractCredentials(args);
+    const { cardId, labelId } = validateAddLabelToCard(params);
+    const client = new TrelloClient(credentials);
+
+    const response = await client.addLabelToCard(cardId, labelId);
+
+    const result = {
+      summary: `Added label ${labelId} to card ${cardId}`,
+      cardId,
+      labels: response.data,
+      rateLimit: response.rateLimit
+    };
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    const errorMessage = error instanceof z.ZodError 
+      ? formatValidationError(error)
+      : error instanceof Error 
+        ? error.message 
+        : 'Unknown error occurred';
+        
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error adding label to card: ${errorMessage}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
+
+export const trelloRemoveLabelFromCardTool: Tool = {
+  name: 'trello_remove_label_from_card',
+  description: 'Remove a label from a Trello card.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      cardId: {
+        type: 'string',
+        description: 'ID of the card to remove the label from',
+        pattern: '^[a-f0-9]{24}$'
+      },
+      labelId: {
+        type: 'string',
+        description: 'ID of the label to remove',
+        pattern: '^[a-f0-9]{24}$'
+      }
+    },
+    required: ['cardId', 'labelId']
+  }
+};
+
+export async function handleTrelloRemoveLabelFromCard(args: unknown) {
+  try {
+    const { credentials, params } = extractCredentials(args);
+    const { cardId, labelId } = validateAddLabelToCard(params);
+    const client = new TrelloClient(credentials);
+
+    const response = await client.removeLabelFromCard(cardId, labelId);
+
+    const result = {
+      summary: `Removed label ${labelId} from card ${cardId}`,
+      cardId,
+      labelId,
+      rateLimit: response.rateLimit
+    };
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result, null, 2)
+        }
+      ]
+    };
+  } catch (error) {
+    const errorMessage = error instanceof z.ZodError 
+      ? formatValidationError(error)
+      : error instanceof Error 
+        ? error.message 
+        : 'Unknown error occurred';
+        
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error removing label from card: ${errorMessage}`
         }
       ],
       isError: true

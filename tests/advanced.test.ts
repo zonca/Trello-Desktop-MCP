@@ -4,7 +4,11 @@ import {
   handleTrelloGetCardAttachments,
   handleTrelloGetCardChecklists,
   handleTrelloGetBoardMembers,
-  handleTrelloGetBoardLabels
+  handleTrelloGetBoardLabels,
+  handleTrelloCreateLabel,
+  handleTrelloUpdateLabel,
+  handleTrelloAddLabelToCard,
+  handleTrelloRemoveLabelFromCard
 } from '../src/tools/advanced.js';
 import { jest } from '@jest/globals';
 import { TrelloClient } from '../src/trello/client';
@@ -217,6 +221,110 @@ describe('Advanced Tools', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Error getting board labels: Validation error: boardId: Invalid board ID format');
+    });
+  });
+
+  describe('handleTrelloCreateLabel', () => {
+    test('should create label on success', async () => {
+      const mockLabel = { id: 'label1', name: 'New Label', color: 'green', idBoard: MOCK_BOARD_ID, uses: 0 };
+
+      const createLabelSpy = jest
+        .spyOn(TrelloClient.prototype, 'createLabel')
+        .mockResolvedValue({ data: mockLabel, rateLimit: { limit: 100, remaining: 99, resetTime: 123 } });
+
+      const args = { apiKey: 'testKey', token: 'testToken', boardId: MOCK_BOARD_ID, name: 'New Label', color: 'green' };
+      const result = await handleTrelloCreateLabel(args);
+
+      expect(createLabelSpy).toHaveBeenCalledWith(MOCK_BOARD_ID, 'New Label', 'green');
+
+      const payload = JSON.parse(result.content[0].text);
+      expect(payload.label.name).toBe('New Label');
+      expect(result.isError).toBeUndefined();
+    });
+
+    test('should handle validation error', async () => {
+      const args = { apiKey: 'testKey', token: 'testToken', boardId: 'invalid', name: '', color: '' };
+      const result = await handleTrelloCreateLabel(args);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error creating label: Validation error: boardId: Invalid board ID format');
+    });
+  });
+
+  describe('handleTrelloUpdateLabel', () => {
+    test('should update label on success', async () => {
+      const mockLabel = { id: 'label1', name: 'Updated', color: 'blue', idBoard: MOCK_BOARD_ID, uses: 2 };
+
+      const updateLabelSpy = jest
+        .spyOn(TrelloClient.prototype, 'updateLabel')
+        .mockResolvedValue({ data: mockLabel, rateLimit: { limit: 100, remaining: 98, resetTime: 123 } });
+
+      const args = { apiKey: 'testKey', token: 'testToken', labelId: '1234567890abcdef12345678', name: 'Updated', color: 'blue' };
+      const result = await handleTrelloUpdateLabel(args);
+
+      expect(updateLabelSpy).toHaveBeenCalledWith('1234567890abcdef12345678', { name: 'Updated', color: 'blue' });
+
+      const payload = JSON.parse(result.content[0].text);
+      expect(payload.label.color).toBe('blue');
+      expect(result.isError).toBeUndefined();
+    });
+
+    test('should require at least one field', async () => {
+      const args = { apiKey: 'testKey', token: 'testToken', labelId: '1234567890abcdef12345678' };
+      const result = await handleTrelloUpdateLabel(args);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error updating label: Validation error: name: At least one of name or color must be provided');
+    });
+  });
+
+  describe('handleTrelloAddLabelToCard', () => {
+    test('should add label to card on success', async () => {
+      const addLabelSpy = jest
+        .spyOn(TrelloClient.prototype, 'addLabelToCard')
+        .mockResolvedValue({ data: ['label1'], rateLimit: { limit: 100, remaining: 97, resetTime: 123 } });
+
+      const args = { apiKey: 'testKey', token: 'testToken', cardId: MOCK_CARD_ID, labelId: '1234567890abcdef12345678' };
+      const result = await handleTrelloAddLabelToCard(args);
+
+      expect(addLabelSpy).toHaveBeenCalledWith(MOCK_CARD_ID, '1234567890abcdef12345678');
+
+      const payload = JSON.parse(result.content[0].text);
+      expect(payload.labels).toContain('label1');
+      expect(result.isError).toBeUndefined();
+    });
+
+    test('should validate ids', async () => {
+      const args = { apiKey: 'testKey', token: 'testToken', cardId: 'invalid', labelId: 'alsoinvalid' };
+      const result = await handleTrelloAddLabelToCard(args);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error adding label to card: Validation error: cardId: Invalid card ID format');
+    });
+  });
+
+  describe('handleTrelloRemoveLabelFromCard', () => {
+    test('should remove label from card on success', async () => {
+      const removeLabelSpy = jest
+        .spyOn(TrelloClient.prototype, 'removeLabelFromCard')
+        .mockResolvedValue({ data: undefined, rateLimit: { limit: 100, remaining: 96, resetTime: 123 } });
+
+      const args = { apiKey: 'testKey', token: 'testToken', cardId: MOCK_CARD_ID, labelId: '1234567890abcdef12345678' };
+      const result = await handleTrelloRemoveLabelFromCard(args);
+
+      expect(removeLabelSpy).toHaveBeenCalledWith(MOCK_CARD_ID, '1234567890abcdef12345678');
+
+      const payload = JSON.parse(result.content[0].text);
+      expect(payload.labelId).toBe('1234567890abcdef12345678');
+      expect(result.isError).toBeUndefined();
+    });
+
+    test('should validate ids on removal', async () => {
+      const args = { apiKey: 'testKey', token: 'testToken', cardId: 'bad', labelId: 'worse' };
+      const result = await handleTrelloRemoveLabelFromCard(args);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Error removing label from card: Validation error: cardId: Invalid card ID format');
     });
   });
 });

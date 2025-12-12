@@ -55,7 +55,15 @@ import {
   trelloGetBoardMembersTool,
   handleTrelloGetBoardMembers,
   trelloGetBoardLabelsTool,
-  handleTrelloGetBoardLabels
+  handleTrelloGetBoardLabels,
+  trelloCreateLabelTool,
+  handleTrelloCreateLabel,
+  trelloUpdateLabelTool,
+  handleTrelloUpdateLabel,
+  trelloAddLabelToCardTool,
+  handleTrelloAddLabelToCard,
+  trelloRemoveLabelFromCardTool,
+  handleTrelloRemoveLabelFromCard
 } from './tools/advanced.js';
 
 export function createMCPServer() {
@@ -116,7 +124,11 @@ export function createMCPServer() {
         trelloGetCardAttachmentsTool,
         trelloGetCardChecklistsTool,
         trelloGetBoardMembersTool,
-        trelloGetBoardLabelsTool
+        trelloGetBoardLabelsTool,
+        trelloCreateLabelTool,
+        trelloUpdateLabelTool,
+        trelloAddLabelToCardTool,
+        trelloRemoveLabelFromCardTool
       ],
     };
   });
@@ -200,6 +212,18 @@ export function createMCPServer() {
       
       case 'trello_get_board_labels':
         return await handleTrelloGetBoardLabels(args);
+
+      case 'trello_create_label':
+        return await handleTrelloCreateLabel(args);
+
+      case 'trello_update_label':
+        return await handleTrelloUpdateLabel(args);
+
+      case 'trello_add_label_to_card':
+        return await handleTrelloAddLabelToCard(args);
+
+      case 'trello_remove_label_from_card':
+        return await handleTrelloRemoveLabelFromCard(args);
       
       default:
         throw new Error(`Unknown tool: ${name}`);
