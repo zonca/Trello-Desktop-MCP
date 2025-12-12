@@ -590,4 +590,46 @@ export class TrelloClient {
       `Get checklists for card ${cardId}`
     );
   }
+
+  async createLabel(boardId: string, name: string, color: string): Promise<TrelloApiResponse<TrelloLabel>> {
+    return this.makeRequest<TrelloLabel>(
+      '/labels',
+      {
+        method: 'POST',
+        params: { name, color, idBoard: boardId }
+      },
+      `Create label "${name}" on board ${boardId}`
+    );
+  }
+
+  async updateLabel(labelId: string, updates: { name?: string; color?: string }): Promise<TrelloApiResponse<TrelloLabel>> {
+    return this.makeRequest<TrelloLabel>(
+      `/labels/${labelId}`,
+      {
+        method: 'PUT',
+        params: updates
+      },
+      `Update label ${labelId}`
+    );
+  }
+
+  async addLabelToCard(cardId: string, labelId: string): Promise<TrelloApiResponse<string[]>> {
+    const params = { value: labelId };
+    return this.makeRequest<string[]>(
+      `/cards/${cardId}/idLabels`,
+      {
+        method: 'POST',
+        params
+      },
+      `Add label ${labelId} to card ${cardId}`
+    );
+  }
+
+  async removeLabelFromCard(cardId: string, labelId: string): Promise<TrelloApiResponse<void>> {
+    return this.makeRequest<void>(
+      `/cards/${cardId}/idLabels/${labelId}`,
+      { method: 'DELETE' },
+      `Remove label ${labelId} from card ${cardId}`
+    );
+  }
 }
