@@ -12,30 +12,28 @@ describe('TrelloClient Label Operations', () => {
       const method = init?.method || 'GET';
 
       switch (`${method} ${urlPath}`) {
-        case 'POST /1/boards/testBoardId/labels':
-          const createLabelBody = JSON.parse(init?.body as string);
+        case 'POST /1/labels':
           return Promise.resolve({
             ok: true,
             status: 200,
             json: () => Promise.resolve({
               id: 'newLabelId',
-              name: createLabelBody.name,
-              color: createLabelBody.color,
-              idBoard: 'testBoardId',
+              name: urlObj.searchParams.get('name'),
+              color: urlObj.searchParams.get('color'),
+              idBoard: urlObj.searchParams.get('idBoard'),
               uses: 0
             }),
             headers: new Headers()
           } as Response);
 
         case 'PUT /1/labels/labelToUpdate':
-          const updateLabelBody = JSON.parse(init?.body as string);
           return Promise.resolve({
             ok: true,
             status: 200,
             json: () => Promise.resolve({
               id: 'labelToUpdate',
-              name: updateLabelBody.name || 'Old Name',
-              color: updateLabelBody.color || 'oldcolor',
+              name: urlObj.searchParams.get('name') || 'Old Name',
+              color: urlObj.searchParams.get('color') || 'oldcolor',
               idBoard: 'testBoardId',
               uses: 5
             }),

@@ -593,10 +593,10 @@ export class TrelloClient {
 
   async createLabel(boardId: string, name: string, color: string): Promise<TrelloApiResponse<TrelloLabel>> {
     return this.makeRequest<TrelloLabel>(
-      `/boards/${boardId}/labels`,
+      '/labels',
       {
         method: 'POST',
-        body: JSON.stringify({ name, color })
+        params: { name, color, idBoard: boardId }
       },
       `Create label "${name}" on board ${boardId}`
     );
@@ -607,7 +607,7 @@ export class TrelloClient {
       `/labels/${labelId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(updates)
+        params: updates
       },
       `Update label ${labelId}`
     );
